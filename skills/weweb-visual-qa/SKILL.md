@@ -28,7 +28,7 @@ These parameters must be known before running QA. They appear as placeholders th
 - WeWeb project ID known (found in editor URL: `editor-dev.weweb.io/PROJECT_ID`)
 - User logged into WeWeb in the Playwright browser session
 
-## QA Process (6 Steps)
+## QA Process (7 Steps)
 
 ### Step 1: Start Dev Server
 ```bash
@@ -88,7 +88,70 @@ async (page) => {
 ```
 5. Verify component renders in the canvas
 
-### Step 6: Execute Test Matrix
+### Step 6: Inject Dummy Data
+
+Before running the test matrix, generate and bind realistic dummy data to stress-test the component. **The QA agent must read `ww-config.js` to understand which properties accept data**, then generate context-appropriate datasets.
+
+#### Process
+
+1. **Read `ww-config.js`** — Identify all `Array` properties, their item schemas, and any `Formula` mappings
+2. **Analyze component purpose** — Use the component name, property labels, and structure to infer what kind of data it expects
+3. **Generate 3 datasets** per Array property:
+
+| Dataset | Purpose | Size | Characteristics |
+|---------|---------|------|-----------------|
+| **Minimal** | Empty/edge state | 0-1 items | Tests empty state handling, no-data message |
+| **Typical** | Normal usage | 5-15 items | Realistic values, mixed lengths, accented chars |
+| **Stress** | Volume + edge cases | 50-200 items | Long strings, special chars, extreme numbers, duplicates |
+
+4. **Bind data via editor settings panel** — Click the component, open settings, paste data into the Array property
+5. **Screenshot after each dataset** — Capture rendering with each data variant
+
+#### Smart Data Generation Rules
+
+Generate data that **makes sense for the component**:
+
+| Component Type | Dummy Data Examples |
+|----------------|---------------------|
+| **Chart/Graph** | Sales figures with realistic ranges, dates, categories. Mix positive/negative values. Include outliers. |
+| **Data Table** | User records with names (including accented: "Jean-Luc", "Müller"), emails, dates, statuses. Include long values that might overflow. |
+| **Calendar** | Events spanning single days, multi-day, overlapping, all-day. Past + future dates. Recurring patterns. |
+| **List/Gallery** | Items with varying title lengths (2 chars to 200 chars), missing optional fields, duplicate names. |
+| **Form Select** | Options with short/long labels, special characters, numeric values, empty strings. |
+| **Tree/Hierarchy** | Nested items with varying depth (1-5 levels), orphan nodes, circular reference attempts. |
+| **Map/Geo** | Coordinates across different regions, edge cases (0,0), antipodal points, clustered pins. |
+
+#### Edge Cases to Always Include
+
+- **Empty string** values in text fields
+- **null/undefined** for optional fields (tests optional chaining)
+- **Very long strings** (200+ chars) to test text overflow/truncation
+- **Special characters**: `<script>alert('xss')</script>`, `"quotes"`, `l'apostrophe`, emoji `🎉`
+- **Numeric extremes**: 0, -1, 999999, 0.001, NaN-like strings
+- **Duplicate IDs** to test uniqueness handling
+- **Missing required fields** to test fallback behavior
+
+#### Example: Chart Component Dummy Data
+
+```javascript
+// Minimal (empty state)
+[]
+
+// Typical (realistic sales data)
+[
+  { id: "q1", label: "Q1 2024", value: 42500, category: "Revenue" },
+  { id: "q2", label: "Q2 2024", value: 38900, category: "Revenue" },
+  { id: "q3", label: "Q3 2024", value: -5200, category: "Expenses" },
+  { id: "q4", label: "Q4 2024", value: 51000, category: "Revenue" },
+  { id: "q5", label: "Q1 2025", value: 0, category: "Pending" },
+  { id: "q6", label: "Année précédente — récap.", value: 127400, category: "Revenue" }
+]
+
+// Stress (volume + edge cases)
+// 100 items with: extreme values, long labels, special chars, missing fields, duplicates
+```
+
+### Step 7: Execute Test Matrix
 
 | # | Test | Method | Expected |
 |---|------|--------|----------|
@@ -101,7 +164,12 @@ async (page) => {
 | 7 | Hover tooltip | Hover on element + screenshot | Tooltip visible |
 | 8 | Feature toggle | Enable feature via settings + screenshot | Feature renders |
 | 9 | Property change | Change prop via settings + screenshot | Updates in realtime |
-| 10 | Post-interaction errors | `browser_console_messages(level="error")` | 0 errors |
+| 10 | Dummy data: empty | Bind empty array `[]` + screenshot | Empty state / no-data message, no crash |
+| 11 | Dummy data: typical | Bind realistic dataset (5-15 items) + screenshot | Renders correctly with real-world data |
+| 12 | Dummy data: stress | Bind large dataset (50-200 items) + screenshot | No crash, acceptable performance, scroll/pagination |
+| 13 | Dummy data: edge cases | Bind data with special chars, long strings, nulls | No XSS, no overflow, graceful fallbacks |
+| 14 | Dummy data: console errors | `browser_console_messages(level="error")` after all data tests | 0 errors |
+| 15 | Post-interaction errors | `browser_console_messages(level="error")` | 0 errors |
 
 ## Technical Details
 
@@ -146,6 +214,34 @@ async (page) => {
 
 ## Screenshots
 - (paths to saved screenshots)
+```
+
+## Dummy Data in QA Report
+
+When reporting results, include a dedicated section for dummy data testing:
+
+```markdown
+## Dummy Data Testing
+
+### Data Generated For
+- [Array property name]: [description of what was generated]
+
+### Results
+| Dataset | Items | Render | Console Errors | Notes |
+|---------|-------|--------|----------------|-------|
+| Empty | 0 | PASS/FAIL | 0 | ... |
+| Typical | N | PASS/FAIL | 0 | ... |
+| Stress | N | PASS/FAIL | 0 | ... |
+| Edge cases | N | PASS/FAIL | 0 | ... |
+
+### Edge Cases Tested
+- [ ] Empty strings
+- [ ] Special characters / XSS attempts
+- [ ] Very long strings (200+ chars)
+- [ ] Null/undefined optional fields
+- [ ] Numeric extremes (0, negative, very large)
+- [ ] Duplicate IDs
+- [ ] Missing required fields
 ```
 
 ## Iteration Loop

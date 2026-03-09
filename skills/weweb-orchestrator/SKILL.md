@@ -200,10 +200,16 @@ You are a QA Agent testing a WeWeb custom component.
      await page.mouse.up();
    }
    ```
-6. Execute test matrix (screenshots at 1440, 768, 375 widths + interactions)
-7. Check console errors: `browser_console_messages(level="error")`
-8. Write report to `docs/qa-report.md`
-9. Report back: PASS/FAIL + issue summary by severity
+6. Read `ww-config.js` to identify Array properties and their item schemas
+7. Generate smart dummy data based on component purpose:
+   - **Empty** (0 items): test empty state
+   - **Typical** (5-15 items): realistic data with accented chars, mixed values
+   - **Stress** (50-200 items): long strings, special chars, extreme numbers, duplicates, nulls
+8. Bind each dataset via settings panel, screenshot after each
+9. Execute remaining test matrix (responsive at 1440/768/375, interactions)
+10. Check console errors: `browser_console_messages(level="error")` after all data + interaction tests
+11. Write report to `docs/qa-report.md` (include Dummy Data Testing section)
+12. Report back: PASS/FAIL + issue summary by severity
 
 ## Severity Levels
 - **BLOCKING:** Crashes, doesn't render, editor errors → must fix

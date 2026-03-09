@@ -37,10 +37,44 @@
 | 10 | Property: array data | Modify array items | Re-renders correctly | | | |
 | 11 | Click interaction | Click interactive element | Trigger fires correctly | | | |
 | 12 | Hover interaction | Hover interactive element | Tooltip/feedback visible | | | |
-| 13 | Console errors (idle) | browser_console_messages | No errors present | | | |
-| 14 | Console errors (after interaction) | browser_console_messages | No new errors | | | |
-| 15 | Console errors (after prop change) | browser_console_messages | No errors | | | |
-| 16 | Component inside iframe | Inspect #ww-manager-iframe | Renders correctly | | | |
+| 13 | Dummy data: empty | Bind empty array [] | Empty state, no crash | | | |
+| 14 | Dummy data: typical | Bind realistic dataset (5-15 items) | Renders correctly | | | |
+| 15 | Dummy data: stress | Bind large dataset (50-200 items) | No crash, acceptable perf | | | |
+| 16 | Dummy data: edge cases | Special chars, long strings, nulls | Graceful fallbacks, no XSS | | | |
+| 17 | Console errors (idle) | browser_console_messages | No errors present | | | |
+| 18 | Console errors (after interaction) | browser_console_messages | No new errors | | | |
+| 19 | Console errors (after dummy data) | browser_console_messages | No errors | | | |
+| 20 | Component inside iframe | Inspect #ww-manager-iframe | Renders correctly | | | |
+
+---
+
+## Dummy Data Testing
+
+### Data Generated For
+
+| Property | Component Purpose | Datasets Generated |
+|----------|------------------|--------------------|
+| [array property name] | [what the data represents] | Empty, Typical (N items), Stress (N items) |
+
+### Results
+
+| Dataset | Items | Renders | Console Errors | Performance | Notes |
+|---------|-------|---------|----------------|-------------|-------|
+| Empty | 0 | | | N/A | |
+| Typical | | | | | |
+| Stress | | | | | |
+| Edge cases | | | | | |
+
+### Edge Cases Tested
+
+- [ ] Empty strings in text fields
+- [ ] Special characters / XSS attempts (`<script>`, quotes, apostrophes)
+- [ ] Very long strings (200+ chars)
+- [ ] Null/undefined for optional fields
+- [ ] Numeric extremes (0, negative, very large, decimals)
+- [ ] Duplicate IDs
+- [ ] Missing required fields
+- [ ] Emoji and unicode characters
 
 ---
 
