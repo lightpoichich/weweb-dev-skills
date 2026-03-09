@@ -1,0 +1,46 @@
+# CLAUDE.md — {{COMPONENT_NAME}}
+
+> {{COMPONENT_DESCRIPTION}}
+
+## Development Commands
+
+- **Install dependencies**: `npm i`
+- **Serve locally**: `npm run serve --port=8080` (then add custom element in WeWeb editor dev popup)
+- **Build for release**: `npm run build --name={{COMPONENT_NAME}}` (check for build errors before release)
+
+## Project Structure
+
+```
+src/wwElement.vue   # Main Vue component (template, script, scoped SCSS)
+ww-config.js        # WeWeb editor configuration (properties, triggers, events)
+package.json        # Dependencies and build/serve scripts
+```
+
+## Critical Requirements (Non-Negotiable)
+
+1. **Optional chaining** (`?.`) for ALL `props.content` references
+2. **Matched `wwEditor:start/end` blocks** in BOTH `.vue` AND `ww-config.js`
+3. **Never access `document`/`window` directly** — use `wwLib.getFrontDocument()` / `wwLib.getFrontWindow()`
+4. **Never hardcode width/height on root element** — must adapt fluidly
+5. **No build config files** — `@weweb/cli` handles everything
+6. **Package name MUST NOT include "ww" or "weweb"**
+7. **Specific versions** for production deps (not "latest")
+8. **Always import external deps explicitly** — never assume globals
+9. **Think NoCode** — add ALL useful triggers and internal variables
+10. **Test production mode** — `wwEditor` blocks are stripped in production
+
+> Full development patterns, property types, reactivity rules, form integration, and dropzone patterns are documented in the installed skills:
+> - `weweb-component-dev` — Complete component development reference
+> - `weweb-visual-qa` — Playwright-based visual QA process
+> - `weweb-orchestrator` — Multi-agent orchestrated development
+
+## WeWeb Environment
+
+- **Editor URL**: `https://editor-dev.weweb.io/{{PROJECT_ID}}`
+- **Dev server**: `https://localhost:8080` (HTTPS, self-signed certificate)
+- **Component iframe**: `#ww-manager-iframe`
+- **Editor subdomain**: Always use `editor-dev.weweb.io` (not `editor.weweb.io`) for local development
+
+## Project-Specific Notes
+
+<!-- Add component-specific conventions, API integrations, dependencies, etc. -->
