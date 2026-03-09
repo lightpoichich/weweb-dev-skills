@@ -1,6 +1,7 @@
 ---
 name: weweb-visual-qa
 description: Visual QA for WeWeb custom components using Playwright MCP. Use after modifying wwElement.vue or ww-config.js to validate rendering, interactions, and responsiveness in the WeWeb editor.
+allowed-tools: ["mcp__plugin_playwright_playwright__*"]
 ---
 
 # WeWeb Visual QA with Playwright MCP
@@ -28,13 +29,34 @@ These parameters must be known before running QA. They appear as placeholders th
 - WeWeb project ID known (found in editor URL: `editor-dev.weweb.io/PROJECT_ID`)
 - User logged into WeWeb in the Playwright browser session
 
-## QA Process (7 Steps)
+### Playwright Permissions
+
+The QA process makes many Playwright tool calls (navigate, click, screenshot, resize...). To avoid approving each one individually:
+
+**Option 1 (recommended):** When Claude Code prompts for the first Playwright tool, select **"Allow all tools from this MCP server"** to approve all Playwright actions for the session.
+
+**Option 2:** This skill declares `allowed-tools: ["mcp__plugin_playwright_playwright__*"]` in its frontmatter, which pre-authorizes all Playwright tools when the skill is invoked. If your Claude Code configuration respects skill-level `allowed-tools`, no manual approval is needed.
+
+**Option 3:** Run Claude Code with `--dangerously-skip-permissions` flag (not recommended for general use, but convenient for QA-only sessions).
+
+## QA Process (8 Steps)
 
 ### Step 1: Start Dev Server
 ```bash
 npm run serve --port=PORT
 ```
 Verify: `curl -sk https://localhost:PORT/ -o /dev/null -w "%{http_code}"` (expect 200)
+
+### Step 1b: Maximize Browser to Screen Size
+
+Detect the user's screen resolution and resize the Playwright browser to fill the full screen. This gives maximum space in the WeWeb editor.
+
+```bash
+# macOS: detect screen resolution
+system_profiler SPDisplaysDataType | grep Resolution
+```
+
+Then use `browser_resize(width, height)` with the detected resolution (e.g., `browser_resize(1920, 1080)`). This must be done before navigating to the editor.
 
 ### Step 2: Accept SSL Certificate in Playwright Browser
 1. `browser_navigate("https://localhost:PORT/")` — will fail with ERR_CERT_AUTHORITY_INVALID
@@ -88,15 +110,98 @@ async (page) => {
 ```
 5. Verify component renders in the canvas
 
-### Step 6: Inject Dummy Data
+### Step 6: Generate Component-Specific Test Plan
 
-Before running the test matrix, generate and bind realistic dummy data to stress-test the component. **The QA agent must read `ww-config.js` to understand which properties accept data**, then generate context-appropriate datasets.
+Before testing, the QA agent MUST analyze the component source code to generate a tailored test plan. Generic tests miss component-specific behavior — this step ensures every feature, interaction, and edge case is covered.
+
+**IMPORTANT:** You must first click the **"Edit"** button in the top toolbar (next to "AI") to enter Edit mode. Only then will the settings/properties panel be accessible in the right sidebar when you select a component.
+
+#### 6a. Read Source Files
+
+Read both `ww-config.js` and `src/wwElement.vue` and extract:
+
+| Source | What to Extract |
+|--------|-----------------|
+| **`ww-config.js` — properties** | All property names, types (`Text`, `Number`, `Color`, `Array`, `OnOff`, `TextSelect`...), default values, conditional visibility (`hidden` expressions) |
+| **`ww-config.js` — triggerEvents** | All trigger events (click, hover, selection change...) — each one needs a test |
+| **`ww-config.js` — sections/blocks** | Feature groups, conditional sections — each toggleable feature needs a test |
+| **`wwElement.vue` — template** | Interactive elements (`@click`, `@mouseenter`, `@input`, `v-if`/`v-show` conditionals, `v-for` loops, slots, dropzones) |
+| **`wwElement.vue` — script** | Computed props, watchers, emits, internal variables (`wwLib.wwVariable`), external library usage |
+| **`wwElement.vue` — style** | Media queries, CSS custom properties, overflow handling, fixed dimensions |
+
+#### 6b. Generate Test Scenarios
+
+Based on the analysis, generate **component-specific test scenarios** organized by category:
+
+**Property tests** — One test per property type:
+- For each `OnOff` toggle: enable/disable and verify visual change
+- For each `Color` prop: change color and verify it applies
+- For each `TextSelect`: switch between each option and verify
+- For each `Number` prop: test min, max, and typical values
+- For each `Array` prop: test with dummy data (see Step 7)
+- For each conditionally hidden property: toggle the parent and verify child appears/disappears
+
+**Interaction tests** — One test per trigger event:
+- For each `triggerEvent`: perform the action that fires it and verify the expected visual feedback
+- Example: if `click:row` exists → click a row, verify selection highlight
+- Example: if `change:sort` exists → click a column header, verify sort indicator
+
+**Feature toggle tests** — One test per toggleable feature:
+- For each `OnOff` property that controls a feature block (e.g., `showLegend`, `enablePagination`): toggle on, verify feature renders, toggle off, verify it disappears
+
+**State tests** — Based on component logic:
+- Empty state (no data)
+- Loading state (if applicable)
+- Error state (if applicable)
+- Overflow state (too much content)
+
+**Responsive tests** — Always included:
+- Desktop, tablet, mobile via WeWeb breakpoint buttons
+
+#### 6c. Write the Test Plan
+
+Output the generated test plan as a numbered list before executing. Format:
+
+```markdown
+## Component-Specific Test Plan — COMPONENT_NAME
+
+### Properties (N tests)
+1. Toggle `showHeader` ON → header row visible
+2. Toggle `showHeader` OFF → header row hidden
+3. Change `primaryColor` to #ff0000 → theme updates
+...
+
+### Interactions (N tests)
+10. Click on data row → `click:row` fires, row highlights
+11. Hover on bar → tooltip appears with value
+...
+
+### Feature Toggles (N tests)
+15. Enable `pagination` → page controls appear at bottom
+16. Disable `pagination` → all rows visible, no controls
+...
+
+### Data & Edge Cases (N tests)
+20. Empty array → "No data" message displayed
+21. Typical dataset (10 items) → all rows render
+22. Stress dataset (100 items) → pagination or scroll, no crash
+...
+
+### Responsive (3 tests)
+25. Desktop breakpoint → full layout
+26. Tablet breakpoint → adapted layout
+27. Mobile breakpoint → stacked/scrollable layout
+
+**Total: N tests**
+```
+
+### Step 7: Inject Dummy Data
+
+Generate and bind realistic dummy data to stress-test the component. **Use the property analysis from Step 6a** — you already know the Array schemas.
 
 #### Process
 
-1. **Read `ww-config.js`** — Identify all `Array` properties, their item schemas, and any `Formula` mappings
-2. **Analyze component purpose** — Use the component name, property labels, and structure to infer what kind of data it expects
-3. **Generate 3 datasets** per Array property:
+1. **Generate 3 datasets** per Array property:
 
 | Dataset | Purpose | Size | Characteristics |
 |---------|---------|------|-----------------|
@@ -104,8 +209,8 @@ Before running the test matrix, generate and bind realistic dummy data to stress
 | **Typical** | Normal usage | 5-15 items | Realistic values, mixed lengths, accented chars |
 | **Stress** | Volume + edge cases | 50-200 items | Long strings, special chars, extreme numbers, duplicates |
 
-4. **Bind data via editor settings panel** — Click the component, open settings, paste data into the Array property
-5. **Screenshot after each dataset** — Capture rendering with each data variant
+2. **Bind data via editor settings panel** — Click the component, open settings, paste data into the Array property
+3. **Screenshot after each dataset** — Capture rendering with each data variant
 
 #### Smart Data Generation Rules
 
@@ -131,51 +236,40 @@ Generate data that **makes sense for the component**:
 - **Duplicate IDs** to test uniqueness handling
 - **Missing required fields** to test fallback behavior
 
-#### Example: Chart Component Dummy Data
+### Step 8: Execute Test Plan
 
-```javascript
-// Minimal (empty state)
-[]
+Execute the test plan generated in Step 6, **not a fixed generic matrix**. The tests are split into two parts:
 
-// Typical (realistic sales data)
-[
-  { id: "q1", label: "Q1 2024", value: 42500, category: "Revenue" },
-  { id: "q2", label: "Q2 2024", value: 38900, category: "Revenue" },
-  { id: "q3", label: "Q3 2024", value: -5200, category: "Expenses" },
-  { id: "q4", label: "Q4 2024", value: 51000, category: "Revenue" },
-  { id: "q5", label: "Q1 2025", value: 0, category: "Pending" },
-  { id: "q6", label: "Année précédente — récap.", value: 127400, category: "Revenue" }
-]
-
-// Stress (volume + edge cases)
-// 100 items with: extreme values, long labels, special chars, missing fields, duplicates
-```
-
-### Step 7: Execute Test Matrix
+#### 8a. Base Tests (always run)
 
 | # | Test | Method | Expected |
 |---|------|--------|----------|
 | 1 | Default render | `browser_take_screenshot` | Component visible, no errors |
-| 2 | Console errors | `browser_console_messages(level="error")` | 0 errors |
-| 3 | Responsive 1280px | `browser_resize(1280, 720)` + screenshot | No overflow |
-| 4 | Responsive 768px | `browser_resize(768, 1024)` + screenshot | Adapts correctly |
-| 5 | Responsive 375px | `browser_resize(375, 667)` + screenshot | Mobile OK |
-| 6 | Click interaction | Click on interactive element + screenshot | Expected feedback |
-| 7 | Hover tooltip | Hover on element + screenshot | Tooltip visible |
-| 8 | Feature toggle | Enable feature via settings + screenshot | Feature renders |
-| 9 | Property change | Change prop via settings + screenshot | Updates in realtime |
-| 10 | Dummy data: empty | Bind empty array `[]` + screenshot | Empty state / no-data message, no crash |
-| 11 | Dummy data: typical | Bind realistic dataset (5-15 items) + screenshot | Renders correctly with real-world data |
-| 12 | Dummy data: stress | Bind large dataset (50-200 items) + screenshot | No crash, acceptable performance, scroll/pagination |
-| 13 | Dummy data: edge cases | Bind data with special chars, long strings, nulls | No XSS, no overflow, graceful fallbacks |
-| 14 | Dummy data: console errors | `browser_console_messages(level="error")` after all data tests | 0 errors |
-| 15 | Post-interaction errors | `browser_console_messages(level="error")` | 0 errors |
+| 2 | Console errors (idle) | `browser_console_messages(level="error")` | 0 errors |
+| 3 | Responsive desktop | Click desktop breakpoint button in WeWeb toolbar + screenshot | No overflow |
+| 4 | Responsive tablet | Click tablet breakpoint button in WeWeb toolbar + screenshot | Adapts correctly |
+| 5 | Responsive mobile | Click mobile breakpoint button in WeWeb toolbar + screenshot | Mobile OK |
+
+#### 8b. Component-Specific Tests (from Step 6c)
+
+Execute every test from the generated plan:
+- **Property tests** — Change each prop in the settings panel, screenshot, verify
+- **Interaction tests** — Perform each user action, screenshot, verify visual feedback
+- **Feature toggle tests** — Toggle on/off, screenshot each state
+- **Data tests** — Bind each dummy dataset from Step 7, screenshot, verify
+
+#### 8c. Final Console Check
+
+| # | Test | Method | Expected |
+|---|------|--------|----------|
+| N-1 | Console errors (post-data) | `browser_console_messages(level="error")` after all data tests | 0 errors |
+| N | Console errors (post-interaction) | `browser_console_messages(level="error")` after all interaction tests | 0 errors |
 
 ## Technical Details
 
 - **Component rendering**: Inside iframe `#ww-manager-iframe`
 - **Accessing component DOM**: Use `browser_evaluate` with frame context
-- **Settings panel**: Click component in canvas, then use right sidebar
+- **Settings panel**: Click "Edit" button in top toolbar (next to "AI") to enter Edit mode, then click component in canvas to open its settings in the right sidebar
 - **Snapshot for selectors**: `browser_snapshot()` returns accessibility tree with refs
 - **Component cannot run standalone**: Needs WeWeb runtime (wwLib, Vue 3)
 
@@ -189,13 +283,42 @@ Generate data that **makes sense for the component**:
 **Port:** PORT
 **Project:** PROJECT_ID
 **Status:** PASS / FAIL
+**Total tests:** N (5 base + N component-specific)
 
-## Results
+## Component Analysis Summary
+- **Properties found:** N (list key ones)
+- **Trigger events:** N (list all)
+- **Toggleable features:** N (list all)
+- **Array properties:** N (for dummy data)
+
+## Base Test Results
 
 | # | Test | Result | Notes |
 |---|------|--------|-------|
 | 1 | Default render | PASS/FAIL | ... |
-| 2 | Console errors | PASS/FAIL | ... |
+| 2 | Console errors (idle) | PASS/FAIL | ... |
+| 3 | Responsive desktop | PASS/FAIL | ... |
+| 4 | Responsive tablet | PASS/FAIL | ... |
+| 5 | Responsive mobile | PASS/FAIL | ... |
+
+## Component-Specific Test Results
+
+### Property Tests
+| # | Test | Result | Notes |
+|---|------|--------|-------|
+| 6 | Toggle `showHeader` ON/OFF | PASS/FAIL | ... |
+| ... | ... | ... | ... |
+
+### Interaction Tests
+| # | Test | Result | Notes |
+|---|------|--------|-------|
+| N | Click row → `click:row` fires | PASS/FAIL | ... |
+| ... | ... | ... | ... |
+
+### Feature Toggle Tests
+| # | Test | Result | Notes |
+|---|------|--------|-------|
+| N | Enable/disable `pagination` | PASS/FAIL | ... |
 | ... | ... | ... | ... |
 
 ## Issues Found
@@ -265,7 +388,7 @@ When reporting results, include a dedicated section for dummy data testing:
 When dispatched by the CTO agent (via `weweb-orchestrator` skill):
 
 1. **Receive context**: The CTO provides `PROJECT_ID`, `COMPONENT_NAME`, `PORT`, and a list of features to test
-2. **Execute full QA process**: Follow Steps 1-6 above with the provided parameters
+2. **Execute full QA process**: Follow Steps 1-8 above with the provided parameters
 3. **Write structured report**: Save to `docs/qa-report.md` using the QA Report Format above
 4. **Classify issues by severity**:
    - **BLOCKING** — crashes, doesn't render, editor errors
@@ -289,7 +412,8 @@ Follow the weweb-visual-qa skill process:
 1. Accept SSL cert at https://localhost:PORT/
 2. Navigate to https://editor-dev.weweb.io/PROJECT_ID
 3. Register and add the component
-4. Execute the full test matrix
-5. Write report to docs/qa-report.md
-6. Report back: PASS/FAIL + issue summary
+4. Read ww-config.js + wwElement.vue → generate component-specific test plan
+5. Click "Edit" in toolbar, inject dummy data, execute all tests (base + specific)
+6. Write report to docs/qa-report.md
+7. Report back: PASS/FAIL + issue summary
 ```

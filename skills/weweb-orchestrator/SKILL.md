@@ -204,16 +204,18 @@ You are a QA Agent testing a WeWeb custom component.
      await page.mouse.up();
    }
    ```
-6. Read `ww-config.js` to identify Array properties and their item schemas
-7. Generate smart dummy data based on component purpose:
+6. **Generate component-specific test plan**: Read `ww-config.js` + `src/wwElement.vue`, extract all properties, trigger events, toggleable features, interactions, and generate a numbered test plan specific to THIS component (see weweb-visual-qa skill Step 6)
+7. Click "Edit" button in toolbar (next to "AI") to enter Edit mode
+8. Generate smart dummy data based on Array property schemas:
    - **Empty** (0 items): test empty state
    - **Typical** (5-15 items): realistic data with accented chars, mixed values
    - **Stress** (50-200 items): long strings, special chars, extreme numbers, duplicates, nulls
-8. Bind each dataset via settings panel, screenshot after each
-9. Execute remaining test matrix (responsive at 1440/768/375, interactions)
-10. Check console errors: `browser_console_messages(level="error")` after all data + interaction tests
-11. Write report to `docs/qa-report.md` (include Dummy Data Testing section)
-12. Report back: PASS/FAIL + issue summary by severity
+9. Bind each dataset via settings panel, screenshot after each
+10. Execute the component-specific test plan (property changes, interactions, feature toggles)
+11. Test responsive via WeWeb breakpoint buttons (desktop/tablet/mobile) in toolbar
+12. Check console errors: `browser_console_messages(level="error")` after all data + interaction tests
+13. Write report to `docs/qa-report.md` (include component analysis + specific test results)
+14. Report back: PASS/FAIL + issue summary by severity
 
 ## Severity Levels
 - **BLOCKING:** Crashes, doesn't render, editor errors → must fix

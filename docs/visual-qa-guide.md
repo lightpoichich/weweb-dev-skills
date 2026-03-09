@@ -100,36 +100,44 @@ async (page) => {
 
 ## Writing Effective Test Matrices
 
-### Standard Test Categories
+### Test Structure: Base + Component-Specific
+
+Tests are split into two categories:
+
+#### Base Tests (always run, same for every component)
 
 | Category | Tests | Purpose |
 |----------|-------|---------|
 | **Rendering** | Default render, default props | Component loads without errors |
-| **Responsiveness** | 1440px, 768px, 375px | Adapts to different viewports |
-| **Properties** | Color, text, toggle, number, array | Real-time updates when changed |
-| **Interactions** | Click, hover, drag | Trigger events fire correctly |
-| **Console** | Idle, post-interaction, post-change | No JavaScript errors |
+| **Responsiveness** | Desktop, Tablet, Mobile breakpoint buttons in WeWeb toolbar | Adapts to different viewports |
+| **Console** | Idle, post-interaction, post-data | No JavaScript errors |
 
-### Customizing for Your Component
+#### Component-Specific Tests (generated per component)
 
-Add component-specific tests:
+Before testing, the QA agent reads `ww-config.js` and `src/wwElement.vue` to generate tests tailored to the exact component being tested:
 
-| Component Type | Additional Tests |
-|----------------|------------------|
-| **Chart** | Data point selection, zoom, legend toggle |
-| **Form input** | Value entry, validation, form submission |
-| **Gallery** | Image loading, lightbox, navigation |
-| **Calendar** | Date selection, view switching, event display |
-| **Data table** | Sort, filter, pagination, row selection |
+| Source Analysis | Generated Tests |
+|-----------------|-----------------|
+| Each `OnOff` property | Toggle on/off, verify visual change |
+| Each `Color` property | Change color, verify it applies |
+| Each `TextSelect` property | Switch between each option, verify |
+| Each `Array` property | Bind 3 dummy datasets (empty, typical, stress) |
+| Each `triggerEvent` | Perform the triggering action, verify feedback |
+| Each toggleable feature section | Enable/disable, verify appearance |
+| Each `@click`/`@mouseenter` in template | Perform interaction, verify response |
+| Each `v-if`/`v-show` conditional | Trigger both states, verify |
+
+This ensures no feature goes untested, and tests match exactly what the component does — not a generic checklist.
 
 ### Property Change Testing
 
 To test property changes in the editor:
-1. Click the component on the canvas to select it
-2. Use the right sidebar to find the property
-3. Modify the value
-4. Take a screenshot to verify the update
-5. Check console for errors
+1. Click the **"Edit"** button in the top toolbar (next to "AI") to enter Edit mode
+2. Click the component on the canvas to select it
+3. Use the right sidebar to find the property
+4. Modify the value
+5. Take a screenshot to verify the update
+6. Check console for errors
 
 ## Interpreting QA Reports
 
