@@ -250,7 +250,7 @@ When reporting results, include a dedicated section for dummy data testing:
 2. If issues found → create bug report with screenshots
 3. Fix agent implements fixes
 4. Re-run QA (max 3 iterations)
-5. If all pass → ready for commit/publish
+5. If all pass → ready for commit/publish (see `weweb-publish` skill for GitHub publishing workflow)
 
 ## Common Pitfalls
 

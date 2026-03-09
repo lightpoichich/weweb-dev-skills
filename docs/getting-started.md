@@ -18,10 +18,11 @@ chmod +x install.sh
 ./install.sh
 ```
 
-This installs three skills into `~/.claude/skills/`:
+This installs four skills into `~/.claude/skills/`:
 - `weweb-component-dev` — Component development reference
 - `weweb-visual-qa` — Playwright-based visual QA
 - `weweb-orchestrator` — Multi-agent orchestrated development
+- `weweb-publish` — GitHub publishing and version management
 
 ## 2. Create a New Component Project
 
@@ -120,13 +121,52 @@ Claude will use the `weweb-orchestrator` skill to:
 
 ## 8. Build and Publish
 
-When ready to release:
+### Build
 
 ```bash
 npm run build --name=my-component
 ```
 
-Fix any build errors, then publish via the WeWeb CLI or dashboard.
+Fix any build errors before proceeding.
+
+### First-Time Publish
+
+```bash
+# Create .gitignore
+cat > .gitignore << 'EOF'
+node_modules/
+dist/
+.DS_Store
+*.log
+.env
+EOF
+
+# Initialize and push to GitHub
+git init
+git add -A
+git commit -m "Initial commit: my-component WeWeb component"
+gh repo create my-component --public --source=. --remote=origin --push
+```
+
+Then in the WeWeb dashboard:
+1. Go to **Custom Code** → **Components**
+2. Click **Add Component** → **Source Code**
+3. Paste your GitHub repo URL
+4. Select branch `main` and wait for the build
+
+### Updating an Existing Component
+
+```bash
+# Bump version (patch / minor / major)
+npm version minor
+
+# Push with tags
+git push origin main --tags
+```
+
+Then in the dashboard, select the new version as active.
+
+See the [Publishing Guide](./publishing-guide.md) for branch strategies, rollback, and troubleshooting.
 
 ## Using the Starter Template
 
@@ -148,4 +188,5 @@ This includes:
 
 - Read the [Orchestrator Guide](./orchestrator-guide.md) for complex multi-file features
 - Read the [Visual QA Guide](./visual-qa-guide.md) for detailed QA workflows
+- Read the [Publishing Guide](./publishing-guide.md) for version management and release workflow
 - Check the `templates/` directory for copy-paste-ready patterns

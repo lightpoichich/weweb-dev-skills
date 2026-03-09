@@ -97,6 +97,9 @@ Trade one long conversation for many disposable specialized sessions. A persiste
          no
          ▼
 8. Done ✓
+         │
+         ▼ (optional)
+9. CTO: Publish (weweb-publish skill)
 ```
 
 ## Phasing Strategy (WeWeb-Specific)
@@ -109,6 +112,7 @@ Trade one long conversation for many disposable specialized sessions. A persiste
 | **UI / Style** | Template structure, scoped SCSS, CSS variables | `src/wwElement.vue` (template + style) | Can parallel with triggers |
 | **Triggers & Events** | Trigger events, emit patterns, event payloads | Both files | Sequential |
 | **QA** | Browser testing, bug fixes | N/A | Sequential |
+| **Publish** (optional) | Version bump, GitHub push, dashboard instructions | `package.json` | Sequential |
 
 **Key rule:** Tasks within a phase can run in parallel only if they don't touch the same files.
 
@@ -261,6 +265,18 @@ QA Report
 - Full QA report with remaining issues
 - What was attempted
 - Recommended manual investigation areas
+
+## Optional Publish Phase
+
+After QA passes and the user confirms readiness, invoke the `weweb-publish` skill:
+
+1. **CTO confirms:** All QA iterations pass, user wants to publish
+2. **Auto-detect:** Run `git remote get-url origin` to determine first publish vs update
+3. **First publish:** Create GitHub repo with `gh repo create`, push code, provide dashboard instructions
+4. **Update:** Determine bump type (patch/minor/major), run `npm version`, push with tags
+5. **Dashboard instructions:** Provide clear manual steps (cannot be automated)
+
+**Important:** Publishing is always optional and user-initiated. The CTO should ask before proceeding to publish. Not every development session ends with a release.
 
 ## Common Mistakes
 

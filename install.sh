@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 # Config
 SKILLS_DIR="${HOME}/.claude/skills"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SKILLS=("weweb-component-dev" "weweb-visual-qa" "weweb-orchestrator")
+SKILLS=("weweb-component-dev" "weweb-visual-qa" "weweb-orchestrator" "weweb-publish")
 MODE="symlink"
 ACTION="install"
 
@@ -40,6 +40,7 @@ ${BOLD}Skills installed:${NC}
   weweb-component-dev   Complete WeWeb component development reference
   weweb-visual-qa       Visual QA with Playwright MCP
   weweb-orchestrator    Multi-agent orchestrated development
+  weweb-publish         GitHub publishing and version management
 
 ${BOLD}Install location:${NC}
   ${SKILLS_DIR}/

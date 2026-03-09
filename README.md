@@ -1,6 +1,6 @@
 # WeWeb Dev Skills for Claude Code
 
-AI-assisted development skills for building WeWeb custom components with Claude Code. Three specialized skills that cover the full development lifecycle: from component architecture to visual QA.
+AI-assisted development skills for building WeWeb custom components with Claude Code. Four specialized skills that cover the full development lifecycle: from component architecture to visual QA to GitHub publishing.
 
 ## What This Is
 
@@ -9,6 +9,7 @@ A collection of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) sk
 - **Component Development Reference** — Complete API guide for properties, reactivity, arrays, dropzones, forms, triggers
 - **Visual QA with Playwright** — Automated visual testing in the WeWeb editor via Playwright MCP
 - **Multi-Agent Orchestrator** — CTO/Dev/QA workflow for complex multi-file features
+- **GitHub Publishing** — Version management, branch strategies, and release workflow via `gh` CLI
 
 ## Skills Overview
 
@@ -17,6 +18,7 @@ A collection of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) sk
 | `weweb-component-dev` | Complete reference for WeWeb component API: property types, reactivity patterns, arrays with formula mapping, dropzones, form container integration, internal variables, editor blocks | Any WeWeb component work |
 | `weweb-visual-qa` | Automated visual testing using Playwright MCP in the WeWeb editor: rendering, responsiveness, interactions, console errors | After code changes, before publish |
 | `weweb-orchestrator` | Multi-agent workflow: CTO plans phases, Dev agents implement, QA agent validates in browser | Complex multi-file features |
+| `weweb-publish` | GitHub publishing: repo creation, version bumping, branch strategies, release workflow | Publish, release, deploy, version bump |
 
 ## Quick Install
 
@@ -37,6 +39,7 @@ Copy the skill directories to your Claude Code skills folder:
 cp -r skills/weweb-component-dev ~/.claude/skills/
 cp -r skills/weweb-visual-qa ~/.claude/skills/
 cp -r skills/weweb-orchestrator ~/.claude/skills/
+cp -r skills/weweb-publish ~/.claude/skills/
 ```
 
 ## Templates Included
@@ -104,7 +107,9 @@ weweb-dev-skills/
 │   │   └── SKILL.md
 │   ├── weweb-component-dev/
 │   │   └── SKILL.md
-│   └── weweb-visual-qa/
+│   ├── weweb-visual-qa/
+│   │   └── SKILL.md
+│   └── weweb-publish/
 │       └── SKILL.md
 │
 ├── templates/
@@ -123,6 +128,7 @@ weweb-dev-skills/
 - [Getting Started](docs/getting-started.md) — Step-by-step setup guide
 - [Orchestrator Guide](docs/orchestrator-guide.md) — Detailed multi-agent workflow
 - [Visual QA Guide](docs/visual-qa-guide.md) — Playwright testing deep dive
+- [Publishing Guide](docs/publishing-guide.md) — GitHub publishing and version management
 
 ## Contributing
 
