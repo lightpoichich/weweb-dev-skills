@@ -21,7 +21,7 @@ A collection of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) sk
 ## Quick Install
 
 ```bash
-git clone https://github.com/user/weweb-dev-skills.git
+git clone https://github.com/lightpoichich/weweb-dev-skills.git
 cd weweb-dev-skills
 chmod +x install.sh
 ./install.sh

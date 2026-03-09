@@ -12,7 +12,7 @@ Step-by-step guide to set up AI-assisted WeWeb component development with Claude
 ## 1. Install Skills
 
 ```bash
-git clone https://github.com/user/weweb-dev-skills.git
+git clone https://github.com/lightpoichich/weweb-dev-skills.git
 cd weweb-dev-skills
 chmod +x install.sh
 ./install.sh
