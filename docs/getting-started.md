@@ -18,13 +18,30 @@ chmod +x install.sh
 ./install.sh
 ```
 
-This installs four skills into `~/.claude/skills/`:
+This installs five skills into `~/.claude/skills/`:
 - `weweb-component-dev` — Component development reference
 - `weweb-visual-qa` — Playwright-based visual QA
 - `weweb-orchestrator` — Multi-agent orchestrated development
 - `weweb-publish` — GitHub publishing and version management
+- `weweb-kickstart` — Scaffold new components from an empty directory
 
 ## 2. Create a New Component Project
+
+### Recommended: Use the Kickstart Skill
+
+Start Claude Code in an empty directory and say:
+
+> "Scaffold a new WeWeb component"
+
+Claude will use the `weweb-kickstart` skill to:
+- Ask about your component (description, library, data, interactions)
+- Generate all project files with a functional prototype
+- Verify the dev server runs
+- Hand off to the orchestrator for continued development
+
+### Manual Alternative
+
+If you prefer to set up manually:
 
 ```bash
 mkdir my-component && cd my-component
