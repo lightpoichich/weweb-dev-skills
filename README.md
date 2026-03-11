@@ -1,6 +1,6 @@
 # WeWeb Dev Skills for Claude Code
 
-AI-assisted development skills for building WeWeb custom components with Claude Code. Four specialized skills that cover the full development lifecycle: from component architecture to visual QA to GitHub publishing.
+AI-assisted development skills for building WeWeb custom components with Claude Code. Five specialized skills that cover the full development lifecycle: from component architecture to visual QA to GitHub publishing.
 
 ## What This Is
 
@@ -19,6 +19,7 @@ A collection of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) sk
 | `weweb-visual-qa` | Automated visual testing using Playwright MCP in the WeWeb editor: rendering, responsiveness, interactions, console errors | After code changes, before publish |
 | `weweb-orchestrator` | Multi-agent workflow: CTO plans phases, Dev agents implement, QA agent validates in browser | Complex multi-file features |
 | `weweb-publish` | GitHub publishing: repo creation, version bumping, branch strategies, release workflow | Publish, release, deploy, version bump |
+| `weweb-kickstart` | Scaffold new components from scratch: brainstorm, generate functional prototype, verify, hand off to orchestrator | New component, scaffold, kickstart, empty directory |
 
 ## Quick Install
 
@@ -40,6 +41,7 @@ cp -r skills/weweb-component-dev ~/.claude/skills/
 cp -r skills/weweb-visual-qa ~/.claude/skills/
 cp -r skills/weweb-orchestrator ~/.claude/skills/
 cp -r skills/weweb-publish ~/.claude/skills/
+cp -r skills/weweb-kickstart ~/.claude/skills/
 ```
 
 ## Templates Included
@@ -53,6 +55,11 @@ cp -r skills/weweb-publish ~/.claude/skills/
 ## Usage Examples
 
 ### Starting a New Component
+
+**Or use the Kickstart skill** for a guided setup from scratch:
+```
+> Scaffold a new WeWeb component
+```
 
 ```
 > Build a star rating component for WeWeb. It should have configurable star count,
@@ -95,6 +102,20 @@ Claude uses `weweb-orchestrator` to:
 - WeWeb account with custom component access
 - [Playwright MCP plugin](https://github.com/anthropics/claude-code) configured (for visual QA)
 
+## Meta-Test
+
+A 42-check automated validation suite that verifies all skills produce correct, consistent code. Catches regressions after skill modifications.
+
+```bash
+# Run all checks
+./tests/run-meta-test.sh
+
+# Verbose output
+./tests/run-meta-test.sh --verbose
+```
+
+The meta-test uses a golden reference "Progress Tracker" component that exercises every WeWeb feature: Text, OnOff, Number, Color, TextSelect (nested), Array with expandable/getItemLabel, Formula mapping, internal variables, trigger events, CSS variables, responsive layout, and matched wwEditor blocks.
+
 ## Project Structure
 
 ```
@@ -103,14 +124,27 @@ weweb-dev-skills/
 ├── install.sh
 │
 ├── skills/
-│   ├── weweb-orchestrator/
-│   │   └── SKILL.md
 │   ├── weweb-component-dev/
 │   │   └── SKILL.md
 │   ├── weweb-visual-qa/
 │   │   └── SKILL.md
-│   └── weweb-publish/
-│       └── SKILL.md
+│   ├── weweb-orchestrator/
+│   │   └── SKILL.md
+│   ├── weweb-publish/
+│   │   └── SKILL.md
+│   ├── weweb-kickstart/
+│   │   └── SKILL.md
+│   └── weweb-meta-test/
+│       └── SKILL.md          # Internal — not installed via install.sh
+│
+├── tests/
+│   ├── run-meta-test.sh      # 42-check validation script
+│   ├── fixtures/              # Golden reference component
+│   │   ├── progress-tracker-spec.md
+│   │   ├── package.json
+│   │   ├── ww-config.js
+│   │   └── src/wwElement.vue
+│   └── reports/               # Generated reports (gitignored)
 │
 ├── templates/
 │   ├── CLAUDE.md.template
@@ -120,7 +154,8 @@ weweb-dev-skills/
 └── docs/
     ├── getting-started.md
     ├── orchestrator-guide.md
-    └── visual-qa-guide.md
+    ├── visual-qa-guide.md
+    └── publishing-guide.md
 ```
 
 ## Documentation
@@ -129,6 +164,7 @@ weweb-dev-skills/
 - [Orchestrator Guide](docs/orchestrator-guide.md) — Detailed multi-agent workflow
 - [Visual QA Guide](docs/visual-qa-guide.md) — Playwright testing deep dive
 - [Publishing Guide](docs/publishing-guide.md) — GitHub publishing and version management
+- [Kickstart Guide](docs/kickstart-guide.md) — Scaffolding new components from scratch
 
 ## Contributing
 
