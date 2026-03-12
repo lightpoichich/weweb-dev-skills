@@ -8,7 +8,8 @@ A collection of Claude Code skills for WeWeb custom component development. These
 
 ```
 skills/               — Skill definitions (SKILL.md files)
-  weweb-component-dev/  — Component API reference (properties, reactivity, arrays, dropzones, forms)
+  weweb-component-dev/  — Source of truth: WeWeb rules & patterns
+    references/           — Shared reference files (weweb-rules.md, advanced-patterns.md)
   weweb-visual-qa/      — Playwright-based visual QA in WeWeb editor
   weweb-orchestrator/   — Multi-agent CTO/Dev/QA workflow
   weweb-publish/        — GitHub publishing and version management
@@ -26,7 +27,8 @@ install.sh            — Symlink/copy installer to ~/.claude/skills/
 ## Key Conventions
 
 - Skills use YAML frontmatter (`name`, `description`) — these must match what Claude Code expects for triggering
-- No absolute paths or user-specific references inside skills — they must be portable
+- **component-dev is the source of truth**: All WeWeb coding rules live in `skills/weweb-component-dev/references/weweb-rules.md`. Other skills reference this file instead of duplicating rules. When editing rules, edit ONLY the reference file — all skills will pick up the change.
+- No absolute paths or user-specific references inside skills — they must be portable. Exception: `~/.claude/skills/weweb-component-dev/references/` is a known stable path used by kickstart and orchestrator to read the shared rules.
 - Skills reference each other (e.g., orchestrator dispatches visual-qa) — keep cross-references consistent when editing
 - All code examples in skills should use WeWeb patterns: Vue 3 Composition API, `wwLib`, optional chaining on `content`
 
@@ -42,7 +44,7 @@ Important details about the WeWeb editor UI that skills must reference correctly
 
 ## When Editing Skills
 
-1. Keep skills self-contained — each SKILL.md should work standalone
+1. **Rules changes go in references/**: Edit `skills/weweb-component-dev/references/weweb-rules.md` or `advanced-patterns.md` — never duplicate rules in other skills
 2. Update both the skill (`skills/*/SKILL.md`) AND the corresponding doc (`docs/*.md`) when making changes
 3. Test that skill triggers correctly by checking the `description` in frontmatter matches expected use cases
 4. Maintain the QA report format in `templates/qa-report.md` if test matrix changes

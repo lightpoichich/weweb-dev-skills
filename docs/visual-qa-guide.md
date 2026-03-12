@@ -179,6 +179,76 @@ Round 3: QA → Issues found → Fix → Re-QA (FINAL)
 3. **Verify the fix doesn't regress** — Full re-test, not just the specific issue
 4. **Document known limitations** — If a MINOR issue won't be fixed, note it
 
+## Field-Tested Techniques
+
+### WeWeb Inline Style Override
+
+WeWeb injects inline styles (`margin: 0px; padding: 0px; ...`) on every component's root `<div>`. This silently overrides any CSS class targeting the root, regardless of specificity.
+
+**Rule:** Never style the root element via classes. Always target an inner child.
+
+**QA check:** Use `browser_evaluate` to compare `getComputedStyle(root).paddingLeft` against expected values. If it shows `0px` when your CSS says `25px`, inline styles are overriding.
+
+### Monaco Editor (Script Properties)
+
+Script-type properties render as Monaco editors. Standard Playwright clicks will timeout because `.view-line` divs intercept pointer events.
+
+**Solution:** Use `page.evaluate` to get Monaco editor coordinates, then `page.mouse.click` at center. Select all (`Meta+a`), delete, type new content with `{ delay: 20 }`, then click outside to trigger evaluation.
+
+Multiple Script properties are indexed as `editors[0]`, `editors[1]`, etc. in DOM order matching `ww-config.js`.
+
+**Note:** Script values are stored as `{code: "..."}` wrapper objects — components must parse `val.code`.
+
+### HMR Timing
+
+After editing `wwElement.vue`, HMR takes 1-3 seconds. Elements depending on DOM measurements (overlays, positioned buttons) may have stale positions during animation.
+
+**QA workaround:** Always `waitForTimeout(2000)` after code changes before running evaluate or screenshot.
+
+### Console Error Filtering
+
+WeWeb editor generates noise. Ignore these:
+- `[Vue warn]: Property "$attrsWithoutClick"` — editor internal
+- `[Vue warn]: Missing required prop: "item"` — editor internal
+- `No codicon found for CompletionItemKind` — Monaco internal
+- Errors from `editor-dev-cdn.weweb.io`
+
+Flag these (real component bugs):
+- `TypeError: Cannot read properties of undefined`
+- `SyntaxError: Unexpected token`
+- `ReferenceError`
+- Errors from `localhost:PORT`
+
+### Post-Change Verification Sequence
+
+After any code change, follow this order:
+1. Wait 2s for HMR
+2. `browser_evaluate`: check computed styles (catches inline override issues)
+3. `browser_evaluate`: check element positions and visibility
+4. `browser_take_screenshot`: visual confirmation
+5. `browser_console_messages`: check for errors (filter noise)
+
+Screenshots alone miss: elements behind the sidebar, `opacity: 0`, inline style overrides, wrong coordinates visually overlapping other content.
+
+### Component Selection in Canvas
+
+Don't click the root element — you'll select the parent (Section, Div) instead. Click a specific identifiable child inside the iframe. Verify selection by checking the right panel title matches your component name.
+
+### Session Recovery
+
+If the browser shows `about:blank`:
+1. Navigate to `https://localhost:PORT/` → type `thisisunsafe`
+2. Navigate to `https://editor-dev.weweb.io/PROJECT_ID`
+3. Re-login if needed (session expired)
+4. Re-configure all property values — they're lost on session expiry
+5. Component code still loads from dev server automatically
+
+### Snapshot Tips
+
+- Iframe element refs have a `f12e` prefix. Main page refs are plain. Don't mix them.
+- After any interaction, the snapshot is stale — always take a fresh one before clicking refs.
+- WeWeb snapshots are large (50-80KB).
+
 ## Common Issues and Solutions
 
 ### "Component not found in Localhost"

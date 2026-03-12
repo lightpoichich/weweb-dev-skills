@@ -1,0 +1,12 @@
+{
+  "name": "progress-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "serve": "weweb serve",
+    "build": "weweb build"
+  },
+  "devDependencies": {
+    "@weweb/cli": "latest"
+  }
+}

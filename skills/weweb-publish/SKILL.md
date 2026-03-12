@@ -30,6 +30,10 @@ There is no CLI publish command. WeWeb watches your GitHub repo and automaticall
 - Component code changes without publishing intent
 - WeWeb dashboard configuration (manual, cannot be automated)
 
+## Source of Truth
+
+The pre-publish checks below validate rules defined in `~/.claude/skills/weweb-component-dev/references/weweb-rules.md`. If you need to understand why a check matters, read that file.
+
 ## Prerequisites
 
 Before publishing, verify:

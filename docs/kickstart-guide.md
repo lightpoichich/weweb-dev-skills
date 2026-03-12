@@ -33,6 +33,7 @@ The skill asks up to 6 questions to understand what you want to build. Only the 
 | **Q4: User interactions** | No | Defines trigger events and click handlers |
 | **Q5: Visual options** | No | Defines OnOff, Color, TextSelect properties |
 | **Q6: PROJECT_ID** | No | Links to your WeWeb project (can be added later) |
+| **Q7: Dropzones** | No | Whether users can drag other elements into the component |
 
 If you give a detailed answer to Q1 that covers libraries, data shape, and interactions, the skill skips the already-answered questions. It also infers reasonable defaults for common component types (charts get a `data` array and `chartType` select, tables get `rows` and `columns`, etc.).
 
@@ -42,7 +43,7 @@ The component name is derived automatically from your description (e.g., "bar ch
 
 All files are generated in one pass, then `npm install` runs.
 
-The skill applies every WeWeb convention automatically: optional chaining on `props.content`, computed properties for all derived data, matched `wwEditor:start/end` blocks, scoped styles on inner containers (never on root), CSS variables for dynamic values, and hardcoded fallback data so the component renders even without bound data.
+Before generating code, the skill reads the authoritative rules from `~/.claude/skills/weweb-component-dev/references/weweb-rules.md` and applies every pattern exactly: optional chaining on `props.content`, computed properties for all derived data, matched `wwEditor:start/end` blocks, scoped styles on inner containers (never on root), CSS variables for dynamic values, and hardcoded fallback data so the component renders even without bound data. This ensures kickstart output is identical in quality to code written with the component-dev skill directly.
 
 If you chose an external library, the skill uses a tested recipe for that library (see Library Recipes below).
 
@@ -82,7 +83,7 @@ my-component/
 
 ### `ww-config.js`
 
-All properties derived from your brainstorm answers. Follows every pattern from the `weweb-component-dev` skill:
+All properties derived from your brainstorm answers. Follows every pattern from `~/.claude/skills/weweb-component-dev/references/weweb-rules.md`:
 - `TextSelect` with nested `options: { options: [...] }` format
 - `Array` with `expandable: true`, `getItemLabel`, and typed sub-properties
 - `bindingValidation` inside wwEditor blocks for bindable properties

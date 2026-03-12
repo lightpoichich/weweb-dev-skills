@@ -36,7 +36,7 @@ Each Dev agent is **ephemeral** — spawned fresh with zero prior context. This 
 ### What to Include in a Dev Agent Prompt
 
 1. **Project context** — Working directory, component purpose
-2. **WeWeb Critical Rules** — The 10 non-negotiable rules (always include)
+2. **WeWeb Rules from source of truth** — Read `~/.claude/skills/weweb-component-dev/references/weweb-rules.md` and paste its content into the prompt. This replaces manually listing the 10 rules — the reference file is always up-to-date.
 3. **Existing code** — Relevant file contents the agent needs
 4. **Task specification** — Exact files to modify, code patterns to follow
 5. **Verification steps** — Build check, wwEditor audit, optional chaining check
@@ -56,7 +56,7 @@ Agent(
   Component: Advanced Data Table with sorting and filtering
 
   ## WeWeb Rules
-  [include all 10 rules]
+  [paste content of ~/.claude/skills/weweb-component-dev/references/weweb-rules.md]
 
   ## Task
   Create ww-config.js with:

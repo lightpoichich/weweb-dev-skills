@@ -240,6 +240,24 @@ Generate data that **makes sense for the component**:
 
 Execute the test plan generated in Step 6, **not a fixed generic matrix**. The tests are split into two parts:
 
+#### Post-Change Verification Sequence
+
+After any code change (HMR takes 1-3s), **always follow this order** before taking screenshots:
+
+```
+1. Wait for HMR to settle (2s minimum)
+2. browser_evaluate: Check computed styles (catches inline override issues)
+3. browser_evaluate: Check element positions and visibility
+4. browser_take_screenshot: Visual confirmation
+5. browser_console_messages: Check for errors (filter WeWeb noise — see 8c)
+```
+
+**Don't skip evaluate checks.** Screenshots alone can miss:
+- Elements positioned behind the sidebar panel
+- Elements with `opacity: 0` or `display: none`
+- CSS rules silently overridden by WeWeb inline styles
+- Elements at wrong coordinates but visually overlapping other content
+
 #### 8a. Base Tests (always run)
 
 | # | Test | Method | Expected |
@@ -265,13 +283,131 @@ Execute every test from the generated plan:
 | N-1 | Console errors (post-data) | `browser_console_messages(level="error")` after all data tests | 0 errors |
 | N | Console errors (post-interaction) | `browser_console_messages(level="error")` after all interaction tests | 0 errors |
 
+**Console Error Filtering — WeWeb editor generates noise that must be ignored:**
+
+| Ignore (editor internals) | Flag (real component bugs) |
+|---------------------------|---------------------------|
+| `[Vue warn]: Property "$attrsWithoutClick"` | `TypeError: Cannot read properties of undefined` |
+| `[Vue warn]: Missing required prop: "item"` | `SyntaxError: Unexpected token` |
+| `No codicon found for CompletionItemKind` | `ReferenceError: xxx is not defined` |
+| Any URL containing `editor-dev-cdn.weweb.io` | Any error from `localhost:PORT` or component source |
+
 ## Technical Details
 
-- **Component rendering**: Inside iframe `#ww-manager-iframe`
-- **Accessing component DOM**: Use `browser_evaluate` with frame context
-- **Settings panel**: Click "Edit" button in top toolbar (next to "AI") to enter Edit mode, then click component in canvas to open its settings in the right sidebar
-- **Snapshot for selectors**: `browser_snapshot()` returns accessibility tree with refs
+### Iframe & DOM Access
+
+- **Component rendering**: Inside iframe `#ww-manager-iframe` (frame name: `ww-manager-iframe`)
+- **Accessing component DOM**: Two approaches:
+  ```js
+  // Approach 1: via browser_evaluate on parent page
+  const iframe = document.querySelector('#ww-manager-iframe');
+  const iframeDoc = iframe?.contentDocument;
+  const el = iframeDoc.querySelector('.my-component');
+  return window.getComputedStyle(el).paddingLeft;
+
+  // Approach 2: via contentFrame locator
+  page.locator('#ww-manager-iframe').contentFrame().locator('.my-class')
+  ```
+- **Iframe element refs** in snapshots have a `f12e` prefix (e.g. `f12e84`). Main page refs are plain (e.g. `e2722`). Don't mix them.
+- **Snapshot staleness**: After any interaction (click, type, navigate), always take a fresh snapshot before using refs.
+
+### Component Selection
+
+- **Don't click the root element** in the canvas — you'll often select the parent (Section, Div) instead
+- **Click a specific identifiable child** inside the iframe (e.g. `.apexcharts-canvas`, a button with a unique class)
+- After clicking, verify selection by checking the right panel title matches your component name
+
+### Settings Panel
+
+- Click "Edit" button in top toolbar (next to "AI") to enter Edit mode, then click component in canvas to open its settings in the right sidebar
+- Right panel shows three tabs as a `radiogroup`: **Style**, **Settings**, **Workflows** — click `radio "Settings"` for component properties
+- Properties may require scrolling. Playwright auto-scrolls to elements when clicking refs.
 - **Component cannot run standalone**: Needs WeWeb runtime (wwLib, Vue 3)
+- **Snapshot for selectors**: `browser_snapshot()` returns accessibility tree with refs. WeWeb editor snapshots are large (50-80KB).
+
+### WeWeb Inline Style Override (CRITICAL)
+
+WeWeb injects inline styles on the **root element** of every component:
+```
+style="margin: 0px; padding: 0px; z-index: unset; align-self: unset; display: block; ..."
+```
+
+**Consequence:** Any CSS targeting the root `<div>` (`padding`, `margin`, etc.) will be silently overridden by inline styles, regardless of specificity.
+
+**QA verification pattern:**
+```js
+// In browser_evaluate — detect inline style override
+const iframe = document.querySelector('#ww-manager-iframe');
+const iframeDoc = iframe?.contentDocument;
+const root = iframeDoc.querySelector('.my-component-root');
+const inlineStyle = root.getAttribute('style');       // Shows WeWeb overrides
+const computed = window.getComputedStyle(root).paddingLeft; // "0px" even if CSS says 25px
+return { inlineStyle, computed };
+```
+
+If a CSS rule appears broken, check if it targets the root element. **Fix: always style an inner child, never the root.**
+
+### Monaco Editor Interaction (Script Properties)
+
+WeWeb `Script`-type properties render as Monaco editor widgets. Standard Playwright clicks will **timeout** because `.view-line` divs intercept pointer events.
+
+**Working pattern:**
+```js
+// browser_run_code
+async (page) => {
+  // Step 1: Find Monaco editor coordinates via evaluate
+  const rect = await page.evaluate(() => {
+    const editors = document.querySelectorAll('.monaco-editor');
+    const r = editors[0].getBoundingClientRect(); // [0] = first Script property
+    return { left: r.left, top: r.top, width: r.width, height: r.height };
+  });
+
+  // Step 2: Click at center coordinates
+  await page.mouse.click(rect.left + rect.width / 2, rect.top + rect.height / 2);
+
+  // Step 3: Select all + delete + type new content
+  await page.keyboard.press('Meta+a');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.type('{"bar":{"horizontal":true}}', { delay: 20 });
+
+  // Step 4: Click outside to trigger evaluation
+  await page.mouse.click(rect.left + rect.width + 50, rect.top);
+}
+```
+
+If multiple Script properties exist, index `editors[0]`, `editors[1]`, etc. in DOM order (matches `ww-config.js` order).
+
+**Note:** Script property values are stored as `{code: "..."}` wrapper objects, NOT evaluated values. Components must handle this wrapper (parse `val.code` if it's a string).
+
+### CSS Verification via Evaluate
+
+For pixel-precise checks, don't rely solely on screenshots:
+
+```js
+// Comprehensive verification pattern
+() => {
+  const iframe = document.querySelector('#ww-manager-iframe');
+  const iframeDoc = iframe?.contentDocument;
+  const wrapper = iframeDoc.querySelector('.component-wrapper');
+
+  // Check computed styles
+  const computed = window.getComputedStyle(wrapper);
+
+  // Check element positions
+  const buttons = iframeDoc.querySelectorAll('.my-button');
+  const positions = Array.from(buttons).map((btn, i) => ({
+    index: i,
+    rect: btn.getBoundingClientRect(),
+    opacity: window.getComputedStyle(btn).opacity,
+    display: window.getComputedStyle(btn).display,
+  }));
+
+  // Check inline style interference
+  const inlineStyle = wrapper.getAttribute('style');
+
+  return { padding: computed.paddingLeft, positions, inlineStyle };
+}
+```
 
 ## QA Report Format
 
@@ -382,6 +518,20 @@ When reporting results, include a dedicated section for dummy data testing:
 - **Drag-drop fails**: Sidebar panel intercepts standard events — must use manual `page.mouse` API
 - **Component not in Localhost**: Check that port matches and server shows "Successfully connected"
 - **Auth expired**: User must re-login manually in the Playwright browser
+- **CSS not applying on root element**: WeWeb injects inline styles on root `<div>` — never style root, always target inner children (see Technical Details > Inline Style Override)
+- **Monaco editor click timeout**: Script property editors intercept pointer events — use `page.mouse.click` at computed coordinates (see Technical Details > Monaco Editor)
+- **Stale DOM after HMR**: After code changes, wait 2s minimum before measuring. Chart libraries may re-animate. Use `waitForTimeout(2000)` before evaluate/screenshot.
+- **Left sidebar hides component**: Components at x=0 may be behind the sidebar. Collapse sidebar or screenshot just the iframe element.
+
+### Session Recovery
+
+If the Playwright browser shows `about:blank` or the session is lost:
+1. Navigate to `https://localhost:PORT/` — SSL page
+2. Type `thisisunsafe` to bypass certificate
+3. Navigate to `https://editor-dev.weweb.io/PROJECT_ID`
+4. May need user to re-login (session expired)
+5. **Re-configure all settings** — property values set via the settings panel are lost on session expiry. The component code still loads from dev server, but runtime property values need to be re-set.
+6. Verify dev server is still running: `curl -sk https://localhost:PORT/ -o /dev/null -w "%{http_code}"` (expect 200)
 
 ## Integration with Orchestrator
 

@@ -9,6 +9,21 @@ description: Use when building a WeWeb component feature end-to-end that require
 
 Trade one long conversation for many disposable specialized sessions. A persistent CTO agent plans and orchestrates, ephemeral Developer agents implement WeWeb components, and a QA agent validates visually in the WeWeb editor via Playwright MCP. Fresh context per agent prevents context bloat and catches mistakes a fatigued session would miss.
 
+## Source of Truth
+
+Before dispatching ANY Dev agent, read the authoritative WeWeb rules:
+
+```
+~/.claude/skills/weweb-component-dev/references/weweb-rules.md
+```
+
+Include the content of this file in every Dev agent prompt under a "## WeWeb Rules" section. This ensures every ephemeral agent gets the same, up-to-date rules — no stale copies, no drift.
+
+If the task involves form containers or dropzones, also read and include content from:
+```
+~/.claude/skills/weweb-component-dev/references/advanced-patterns.md
+```
+
 ## When to Use
 
 - Building a component feature that spans both `wwElement.vue` and `ww-config.js` with significant complexity
@@ -48,6 +63,7 @@ Trade one long conversation for many disposable specialized sessions. A persiste
 
 ### CTO Agent (You — the persistent session)
 - Plans features, breaks into phased tasks
+- **Reads `weweb-rules.md`** and includes it in every Dev agent prompt
 - Dispatches Dev agents with full task specs (agent never reads plan files)
 - Reviews results between phases (`npm run build`, wwEditor block audit, optional chaining check)
 - Dispatches QA agent after implementation
@@ -56,9 +72,8 @@ Trade one long conversation for many disposable specialized sessions. A persiste
 
 ### Developer Agent (Ephemeral subagent)
 - Spawned fresh per task — no prior context, no assumptions
-- Receives complete task spec inline (files to create/modify, code patterns, WeWeb rules)
+- Receives complete task spec inline including WeWeb rules from `weweb-rules.md`
 - Works on `src/wwElement.vue` and/or `ww-config.js`
-- Follows WeWeb conventions: optional chaining, matched wwEditor blocks, no hardcoded root dimensions
 - Commits after each completed task
 - Reports back: what was done, build result, issues encountered
 - Dies after task completion
@@ -79,10 +94,10 @@ Trade one long conversation for many disposable specialized sessions. A persiste
 2. CTO: Write Implementation Plan (phased tasks)
          │
          ▼
-3. CTO: Dispatch Dev Agent(s) ◄──── fail: re-dispatch
-         │                              │
-         ▼                              │
-4. CTO: Review (build, wwEditor, ?.)────┘
+3. CTO: Read weweb-rules.md + Dispatch Dev Agent(s) ◄──── fail: re-dispatch
+         │                                                    │
+         ▼                                                    │
+4. CTO: Review (build, wwEditor, ?.)──────────────────────────┘
          │
          ▼ pass
 5. More phases? ──yes──► back to step 3
@@ -131,6 +146,8 @@ Agent(
 
 ### Dev Agent Prompt Template
 
+**Before using this template**, read `~/.claude/skills/weweb-component-dev/references/weweb-rules.md` and paste its content into the `## WeWeb Rules` section below. If the task involves form containers or dropzones, also include content from `advanced-patterns.md`.
+
 ```markdown
 You are an ephemeral Developer Agent building a WeWeb custom component.
 
@@ -139,20 +156,14 @@ You are an ephemeral Developer Agent building a WeWeb custom component.
 - **Component:** [component name and description]
 - **Files:** `src/wwElement.vue` (Vue 3 SFC), `ww-config.js` (editor config)
 
-## WeWeb Critical Rules (MUST FOLLOW)
-1. Optional chaining everywhere: `props.content?.property`
-2. `/* wwEditor:start */` / `/* wwEditor:end */` blocks MUST match in BOTH files
-3. Never access `document`/`window` directly — use `wwLib.getFrontDocument()` / `wwLib.getFrontWindow()`
-4. Never hardcode width/height on root element
-5. No build config files — `@weweb/cli` handles everything
-6. Package name MUST NOT include "ww" or "weweb"
-7. Use specific versions for production deps
-8. Always import external deps explicitly
-9. TextSelect MUST use nested options: `options: { options: [{ value, label }] }`
-10. Array properties MUST have `expandable: true` and `getItemLabel()`
+## WeWeb Rules
+[PASTE CONTENT OF weweb-rules.md HERE — this is the single source of truth]
 
 ## Your Task
 [Exact specification: files to modify, code to write, patterns to follow]
+
+## Existing Code
+[Paste relevant existing file content — agent has no prior context]
 
 ## Verification
 After completing the task:
@@ -285,11 +296,11 @@ After QA passes and the user confirms readiness, invoke the `weweb-publish` skil
 | Mistake | Fix |
 |---------|-----|
 | CTO writes code directly | Only dispatch agents. CTO plans and reviews. |
-| Agent prompt too vague | Include complete code, file paths, WeWeb rules |
+| Agent prompt too vague | Include complete code, file paths, and weweb-rules.md content |
 | Skipping CTO review between phases | Always verify build + wwEditor blocks before next phase |
 | Parallel agents touching same files | `wwElement.vue` and `ww-config.js` are usually coupled — serialize |
 | QA without dev server running | Start `npm run serve --port=PORT` before Playwright testing |
 | Not committing between tasks | Each agent commits its work before dying |
-| Missing WeWeb rules in Dev prompt | Always include the 10 Critical Rules in every Dev agent prompt |
+| Hardcoding WeWeb rules in prompt | Read `weweb-rules.md` at dispatch time — rules may have been updated |
 | Using `editor.weweb.io` for QA | Must use `editor-dev.weweb.io` for local component loading |
 | Forgetting SSL cert step | Must type `thisisunsafe` at start of each Playwright session |

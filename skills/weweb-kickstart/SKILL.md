@@ -12,12 +12,27 @@ description: Use when starting a WeWeb component from scratch in an empty or new
 - If BOTH `package.json` AND `ww-config.js` exist → **STOP**. This project is already scaffolded. Say: "Ce projet WeWeb existe déjà. Utilise le skill `weweb-component-dev` pour le développement ou `weweb-orchestrator` pour un workflow multi-agent."
 - If only one or neither exists → proceed with kickstart.
 
+## Source of Truth
+
+Before generating any code (Phase 2), you MUST read the authoritative WeWeb rules:
+
+```
+~/.claude/skills/weweb-component-dev/references/weweb-rules.md
+```
+
+This file contains ALL property type patterns, reactivity rules, trigger event formats, CSS variable patterns, and the 10 critical rules. Follow every pattern exactly — it is the single source of truth for WeWeb component code quality.
+
+If the component needs **dropzones** (Q7), also read:
+```
+~/.claude/skills/weweb-component-dev/references/advanced-patterns.md
+```
+
 ## Overview
 
 This skill takes a developer from an empty directory to a working WeWeb component prototype in 4 phases:
 
 ```
-Phase 1: Mini-brainstorm (up to 6 questions)
+Phase 1: Mini-brainstorm (up to 7 questions)
 Phase 2: Scaffolding (generate all files + npm install)
 Phase 3: Verification (dev server + health check)
 Phase 4: Handoff (recap + orchestrator instructions)
@@ -68,6 +83,12 @@ Skip if Q1 already covered this. This defines OnOff, Color, TextSelect propertie
 
 > Si tu as déjà un PROJECT_ID WeWeb (l'UUID dans l'URL de l'éditeur), colle-le ici. Sinon, on mettra un placeholder — tu pourras le renseigner plus tard dans CLAUDE.md.
 
+### Q7 (Optional): Dropzones
+
+> Ton composant doit-il contenir des zones où l'utilisateur peut glisser d'autres éléments WeWeb ? (ex: un layout avec header/body/footer, un container avec slot personnalisable)
+
+Skip if Q1 makes it clear the component is a leaf element (charts, inputs, display widgets). Ask if the component sounds like a container or layout.
+
 ### Inference Rules
 
 - If the user gives a detailed Q1 that covers libraries, data, interactions, and options, skip the answered questions entirely
@@ -85,6 +106,10 @@ From Q1, derive a component name:
 - Confirm with user: "Je propose le nom `bar-chart` — ça te va ?"
 
 ## Phase 2 — Scaffolding
+
+**Before generating code, read `~/.claude/skills/weweb-component-dev/references/weweb-rules.md`** and follow every pattern exactly.
+
+If Q7 indicated dropzones, also read `~/.claude/skills/weweb-component-dev/references/advanced-patterns.md` for the dropzone section.
 
 Generate ALL files in one pass, then run `npm install`.
 
@@ -117,7 +142,7 @@ Rules:
 
 ### File 2: `ww-config.js`
 
-Generate following ALL patterns from the `weweb-component-dev` skill:
+Generate following ALL patterns from `weweb-rules.md`. The patterns you read from that file are authoritative — apply them exactly:
 
 - `editor.label` with `{ en: 'Component Name' }` format
 - Properties typed from brainstorm answers (Q3-Q5)
@@ -129,69 +154,17 @@ Generate following ALL patterns from the `weweb-component-dev` skill:
 - Matched `/* wwEditor:start */` / `/* wwEditor:end */` blocks
 - Organize into `section: 'settings'` and `section: 'style'`
 
+If Q7 indicated dropzones, add hidden array properties and `<wwLayout>` following `advanced-patterns.md`.
+
 ### File 3: `src/wwElement.vue`
 
-Generate a **functional prototype** following ALL WeWeb conventions:
+Generate a **functional prototype** following ALL patterns from `weweb-rules.md`:
 
-```vue
-<template>
-  <div class="COMPONENT_NAME">
-    <div class="COMPONENT_NAME__inner">
-      <!-- Functional template here -->
-    </div>
-  </div>
-</template>
-
-<script setup>
-import { computed } from 'vue';
-// import ExternalLib from 'external-lib'; // if applicable
-
-const props = defineProps({
-  content: { type: Object, required: true },
-  uid: { type: String, required: true },
-  /* wwEditor:start */
-  wwEditorState: { type: Object },
-  /* wwEditor:end */
-});
-
-const emit = defineEmits(['trigger-event']);
-
-// Props with optional chaining + fallback defaults
-const data = computed(() => props.content?.data ?? [/* hardcoded fallback */]);
-const showTitle = computed(() => props.content?.showTitle ?? true);
-
-// External lib initialization (if applicable)
-// Use ref for DOM element, onMounted for init, onUnmounted for cleanup
-
-// Trigger event handlers
-function handleClick(item) {
-  emit('trigger-event', {
-    name: 'click:item',
-    event: { value: item },
-  });
-}
-</script>
-
-<style lang="scss" scoped>
-.COMPONENT_NAME {
-  // NEVER style the root — WeWeb overrides inline styles on root
-  &__inner {
-    padding: var(--padding, 16px);
-    // Component styles here
-  }
-}
-</style>
-```
-
-Critical rules:
-- **Optional chaining** (`?.`) for ALL `props.content` references
-- **Computed** (not `ref`) for all props-derived data
-- **Matched wwEditor blocks** in template and script
-- **Scoped styles on inner container** — never on root `<div>`
-- **CSS variables** for dynamic values (colors, sizes)
-- **Hardcoded fallback data** — component renders something even without bound data
+- **Template**: Use BEM class naming (`COMPONENT_NAME`, `COMPONENT_NAME__inner`). Never style root. If dropzones, include `<wwLayout>` with proper CSS.
+- **Script**: `<script setup>` with `computed` (never `ref`) for all content-derived data. Optional chaining on every `props.content` access. Hardcoded fallback data so component renders without bindings.
+- **Style**: Scoped SCSS on inner container. CSS variables for dynamic values (colors, sizes). Never style root element.
+- **Triggers**: `emit('trigger-event', { name: '...', event: { value: ... } })`
 - **No direct document/window** — use `wwLib.getFrontDocument()` / `wwLib.getFrontWindow()`
-- **Trigger emits** use format: `emit('trigger-event', { name: '...', event: { value: ... } })`
 
 If using an external library, follow the appropriate recipe (see Library Recipes below).
 
@@ -246,6 +219,7 @@ Display a structured recap in French:
 **Lib:** LIBRARY_NAME (or "vanilla")
 **Props:** N (list key ones)
 **Triggers:** N (list all)
+**Dropzones:** N (if any)
 **Dev server:** https://localhost:PORT/
 **PROJECT_ID:** VALUE or "à renseigner dans CLAUDE.md"
 
@@ -518,13 +492,3 @@ For libraries not listed above:
 1. Use `context7` MCP to fetch the library's documentation: `resolve-library-id` then `query-docs` with topic "Vue 3 integration"
 2. If `context7` is unavailable, use `WebSearch` to find "LIBRARY_NAME Vue 3 integration example"
 3. Generate the wrapper following the same pattern: `ref` for DOM element, `onMounted` for init, `onUnmounted` for cleanup, `watch` for reactive updates
-
-## Reference
-
-This skill generates code that must comply with ALL rules in the `weweb-component-dev` skill. When in doubt, consult that skill for:
-- Property type definitions and correct formats
-- Reactivity patterns (computed vs ref)
-- Array property structure (expandable, getItemLabel, Formula mapping)
-- Form container integration
-- Dropzone patterns
-- Internal variable registration
