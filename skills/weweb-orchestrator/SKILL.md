@@ -65,7 +65,7 @@ If the task involves form containers or dropzones, also read and include content
 - Plans features, breaks into phased tasks
 - **Reads `weweb-rules.md`** and includes it in every Dev agent prompt
 - Dispatches Dev agents with full task specs (agent never reads plan files)
-- Reviews results between phases (`npm run build`, wwEditor block audit, optional chaining check)
+- Reviews results between phases (`npx weweb build`, wwEditor block audit, optional chaining check)
 - Dispatches QA agent after implementation
 - Routes bug fixes back to new Dev agents
 - **NEVER writes code directly**
@@ -167,7 +167,7 @@ You are an ephemeral Developer Agent building a WeWeb custom component.
 
 ## Verification
 After completing the task:
-1. Run `npm run build --name=[component-name]` — must succeed with no errors
+1. Run `npx weweb build -- name=[component-name] type=wwobject` — must succeed with no errors
 2. Verify all `/* wwEditor:start */` have matching `/* wwEditor:end */`
 3. Verify all `props.content` references use optional chaining (`?.`)
 4. Commit with a clear message describing the change
@@ -241,7 +241,7 @@ Run these checks after each Dev agent completes:
 
 ```bash
 # 1. Build check — must pass
-npm run build --name=[component-name]
+npx weweb build -- name=[component-name] type=wwobject
 
 # 2. wwEditor block audit — every start must have matching end
 grep -n "wwEditor:start\|wwEditor:end" src/wwElement.vue ww-config.js

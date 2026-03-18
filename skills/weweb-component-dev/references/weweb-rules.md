@@ -26,10 +26,12 @@ package.json        # Only @weweb/cli as devDependency ("latest")
 ## Dev Commands
 
 ```bash
-npm i                              # Install dependencies
-npm run serve --port=[PORT]        # Serve locally (add in WeWeb editor dev popup)
-npm run build --name=my-element    # Build for release
+npm i                                                      # Install dependencies
+npm run serve --port=[PORT]                                # Serve locally (add in WeWeb editor dev popup)
+npx weweb build -- name=my-element type=wwobject           # Build for release
 ```
+
+Note: the build command uses `npx weweb build` directly. The `--` with a space before `name=` is required (non-standard arg format). `type=wwobject` is mandatory.
 
 ## Props Structure
 
@@ -155,6 +157,69 @@ myColor:  { label: { en: 'Color' }, type: 'Color', section: 'style', bindable: t
 myLen:    { label: { en: 'Width' }, type: 'Length', section: 'style', options: { noRange: true }, bindable: true },
 ```
 
+### SystemIcon (SVG-based icons)
+
+`type: 'Icon'` is **deprecated** (legacy font-icon system). Use `type: 'SystemIcon'` for the modern SVG-based icon system (Lucide, Phosphor, etc.).
+
+```javascript
+// ww-config.js
+myIcon: {
+  label: { en: 'Icon' },
+  type: 'SystemIcon',
+  section: 'settings',
+  defaultValue: 'lucide/check',
+}
+```
+
+Icon naming format: `"library/iconName"` — e.g. `"lucide/check"`, `"phosphor-regular/heart"`
+
+**Rendering:** `SystemIcon` returns a string (the icon name). To render the actual SVG, use `wwLib.useIcons()`:
+
+```javascript
+// In <script setup>
+const { getIcon } = wwLib.useIcons();
+const iconSvg = ref('');
+
+watch(() => props.content?.myIcon, async (iconName) => {
+  if (iconName) {
+    try { iconSvg.value = await getIcon(iconName); }
+    catch { iconSvg.value = ''; }
+  }
+}, { immediate: true });
+```
+
+```html
+<!-- In template — v-html because getIcon returns SVG markup -->
+<span class="icon-container" v-html="iconSvg"></span>
+```
+
+**For icons inside arrays** (multiple icons to resolve), use a reactive map:
+
+```javascript
+const iconSvgs = reactive({});
+watch(() => items.value.map(i => i.icon), async (icons) => {
+  for (const icon of icons) {
+    if (icon && !iconSvgs[icon]) {
+      try { iconSvgs[icon] = await getIcon(icon); }
+      catch { iconSvgs[icon] = null; }
+    }
+  }
+}, { immediate: true });
+```
+
+**SVG sizing:** Icons rendered via `v-html` inherit no size. Use `:deep(svg)` in scoped styles:
+
+```scss
+.icon-container {
+  display: flex;
+  align-items: center;
+  :deep(svg) {
+    width: 1em;
+    height: 1em;
+  }
+}
+```
+
 ### Array with Objects (Professional Standard)
 
 ```javascript
@@ -169,7 +234,7 @@ items: {
     getItemLabel(item) { return item.name || 'Item' },
     item: {
       type: 'Object',
-      defaultValue: { id: 'new', name: 'New Item' },
+      defaultValue: { id: 'new', name: 'New Item' },  // CRITICAL — without this, clicking "+ Add" crashes
       options: {
         item: {
           id:   { label: 'ID', type: 'Text' },
@@ -180,6 +245,8 @@ items: {
   },
 }
 ```
+
+The `type: 'Object'` wrapper on the item is mandatory — without it, sub-fields won't render in the editor sidebar. The `defaultValue` on the item object is equally critical: without it, clicking "+ Add" in the editor creates an `undefined` item that crashes the component.
 
 ### Formula Properties (Dynamic Field Mapping)
 
@@ -277,6 +344,23 @@ watch(() => [
   setTimeout(() => containerRef.value && reinitialize(), 50)
 }, { deep: true })
 ```
+
+## Defensive Array Normalization
+
+When array items come from user input or data bindings, they may be malformed (missing fields, nulls, partial data). Always normalize in a computed to prevent crashes:
+
+```javascript
+const options = computed(() => {
+  const raw = props.content?.options ?? defaults;
+  return raw.map((opt, i) => ({
+    label: opt?.label ?? `Option ${i + 1}`,
+    icon: opt?.icon ?? '',
+    value: opt?.value ?? `option-${i}`,
+  }));
+});
+```
+
+This is especially important for arrays with `bindable: true` — bound data from external sources often has missing or null fields. Without normalization, the component crashes when users click "+ Add" in the editor (new items have only `defaultValue` fields) or when bound data doesn't match the expected shape.
 
 ## Internal Variables (MANDATORY for interactive/select/input components)
 

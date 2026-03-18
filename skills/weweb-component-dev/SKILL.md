@@ -24,10 +24,12 @@ references/
 ## Dev Commands
 
 ```bash
-npm i                              # Install dependencies
-npm run serve --port=[PORT]        # Serve locally (add in WeWeb editor dev popup)
-npm run build --name=my-element    # Build for release
+npm i                                                      # Install dependencies
+npm run serve --port=[PORT]                                # Serve locally (add in WeWeb editor dev popup)
+npx weweb build -- name=my-element type=wwobject           # Build for release
 ```
+
+Note: `npx weweb build` requires `--` with a space before args, and `type=wwobject` is mandatory.
 
 ## Project Structure
 
@@ -66,6 +68,9 @@ For full explanations with code examples, read `references/weweb-rules.md`.
 | Array | `type: 'Array', options: { expandable: true, getItemLabel, item }` | settings |
 | Formula | `type: 'Formula', hidden when not bound` | settings |
 | InfoBox | `type: 'InfoBox', editorOnly: true` | settings |
+| SystemIcon | `type: 'SystemIcon'` — render with `wwLib.useIcons().getIcon()` + `v-html` | settings |
+
+**`type: 'Icon'` is deprecated** — always use `SystemIcon` (SVG-based: Lucide, Phosphor).
 
 **Every property MUST have:** `label: { en: '...' }`, `type`, `section`, `defaultValue`
 **Bindable properties MUST have:** `bindingValidation` inside `/* wwEditor:start/end */`
@@ -123,3 +128,7 @@ For these less common but critical patterns, read `references/advanced-patterns.
 | Styling root element directly | Style inner child — WeWeb overrides root inline styles |
 | Missing `wwElementState` prop | Required for form container integration |
 | Form input without `useForm` injection | Read `references/advanced-patterns.md` |
+| `type: 'Icon'` (deprecated) | Use `type: 'SystemIcon'` + `wwLib.useIcons().getIcon()` |
+| Array item missing `type: 'Object'` wrapper | Sub-fields invisible in editor without it |
+| Array item missing `defaultValue` | Clicking "+ Add" crashes — always set `defaultValue` on the item Object |
+| No normalization on bound array data | Always normalize with `opt?.field ?? fallback` in computed |

@@ -27,19 +27,62 @@ These parameters must be known before running QA. They appear as placeholders th
 
 - Dev server running: `npm run serve --port=PORT`
 - WeWeb project ID known (found in editor URL: `editor-dev.weweb.io/PROJECT_ID`)
-- User logged into WeWeb in the Playwright browser session
+
+### Browser Configuration (One-Time Setup)
+
+For the best QA experience, configure the Playwright MCP plugin with a **persistent browser profile** and **1080p viewport**. This saves login sessions across Claude Code sessions (including Google Sign-In) and starts the browser at full workspace size.
+
+Edit the Playwright plugin MCP config (find the path with `find ~/.claude/plugins -name ".mcp.json" -path "*/playwright/*"`):
+
+```json
+{
+  "playwright": {
+    "command": "npx",
+    "args": [
+      "@playwright/mcp@latest",
+      "--user-data-dir", "~/.playwright-weweb",
+      "--viewport-size", "1920x1080"
+    ]
+  }
+}
+```
+
+- `--user-data-dir` keeps cookies/sessions alive — log in once (email/password or Google), and the session persists across sessions.
+- `--viewport-size` starts the browser at 1920×1080 directly, no resize needed.
+- The plugin cache path contains a hash that changes on plugin updates. If login stops working after an update, re-apply this config.
+
+**Optional — auto-login credentials:** For fully automated login when the session expires, set environment variables:
+```bash
+export WEWEB_EMAIL="your@email.com"
+export WEWEB_PASSWORD="your-password"
+```
+If set, the QA process fills the WeWeb login form automatically when needed. Without them, you'll be prompted to log in manually.
 
 ### Playwright Permissions
 
-The QA process makes many Playwright tool calls (navigate, click, screenshot, resize...). To avoid approving each one individually:
+The QA process makes many Playwright tool calls (navigate, click, screenshot, resize...). Approving each one individually is impractical. The skill handles this automatically — see Step 0 below.
 
-**Option 1 (recommended):** When Claude Code prompts for the first Playwright tool, select **"Allow all tools from this MCP server"** to approve all Playwright actions for the session.
+## QA Process (9 Steps)
 
-**Option 2:** This skill declares `allowed-tools: ["mcp__plugin_playwright_playwright__*"]` in its frontmatter, which pre-authorizes all Playwright tools when the skill is invoked. If your Claude Code configuration respects skill-level `allowed-tools`, no manual approval is needed.
+### Step 0: Ensure Playwright Permissions
 
-**Option 3:** Run Claude Code with `--dangerously-skip-permissions` flag (not recommended for general use, but convenient for QA-only sessions).
+Before anything else, ensure the project's `.claude/settings.local.json` has a wildcard permission for all Playwright tools. This persists across sessions — you only need to set it once per project.
 
-## QA Process (8 Steps)
+1. Read `.claude/settings.local.json` (create the file and `.claude/` directory if they don't exist)
+2. Check if `"mcp__plugin_playwright_playwright__*"` is already in `permissions.allow`
+3. If not present, add it to the `allow` array. If the file is new, create it with:
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__plugin_playwright_playwright__*"
+    ]
+  }
+}
+```
+4. If existing individual Playwright permissions are present (e.g., `mcp__plugin_playwright_playwright__browser_navigate`), they can be left as-is — the wildcard covers them all.
+
+This eliminates all Playwright permission prompts for the rest of the project.
 
 ### Step 1: Start Dev Server
 ```bash
@@ -47,16 +90,18 @@ npm run serve --port=PORT
 ```
 Verify: `curl -sk https://localhost:PORT/ -o /dev/null -w "%{http_code}"` (expect 200)
 
-### Step 1b: Maximize Browser to Screen Size
+### Step 1b: Verify Browser Viewport
 
-Detect the user's screen resolution and resize the Playwright browser to fill the full screen. This gives maximum space in the WeWeb editor.
+If the Playwright MCP is configured with `--viewport-size 1920x1080` (see Prerequisites), the browser already has the right size — skip this step.
+
+Otherwise, resize the browser to at least 1920×1080 for comfortable WeWeb editor use:
 
 ```bash
-# macOS: detect screen resolution
+# macOS: detect actual screen resolution (optional, for full-screen)
 system_profiler SPDisplaysDataType | grep Resolution
 ```
 
-Then use `browser_resize(width, height)` with the detected resolution (e.g., `browser_resize(1920, 1080)`). This must be done before navigating to the editor.
+Then `browser_resize(width, height)` — use the detected resolution or default to `browser_resize(1920, 1080)`. This must be done before navigating to the editor.
 
 ### Step 2: Accept SSL Certificate in Playwright Browser
 1. `browser_navigate("https://localhost:PORT/")` — will fail with ERR_CERT_AUTHORITY_INVALID
@@ -64,13 +109,43 @@ Then use `browser_resize(width, height)` with the detected resolution (e.g., `br
 3. Type `thisisunsafe` using `browser_press_key` for each character: t-h-i-s-i-s-u-n-s-a-f-e
 4. Page auto-navigates to dev server showing "Server and SSL OK"
 
-### Step 3: Navigate to Dev Editor
+### Step 3: Navigate to Dev Editor & Authenticate
+
 ```
 browser_navigate("https://editor-dev.weweb.io/PROJECT_ID")
 ```
 **IMPORTANT:** Use `editor-dev.weweb.io` (NOT `editor.weweb.io`). Only the dev editor supports local component loading.
 
-If redirected to login page, user must authenticate manually.
+#### 3a. Check if Login is Required
+
+After navigation, take a `browser_snapshot()` and check the current URL:
+- If the URL contains the project editor path → **logged in, proceed to Step 4**
+- If redirected to a login/auth page (URL contains `auth`, `login`, or `sign-in`) → **continue to 3b**
+
+With a persistent browser profile (`--user-data-dir`), login is usually still active from a previous session. If the session has expired, continue below.
+
+#### 3b. Automated Login (if credentials available)
+
+Check if `WEWEB_EMAIL` and `WEWEB_PASSWORD` environment variables are set:
+
+```bash
+echo "${WEWEB_EMAIL:+set}" "${WEWEB_PASSWORD:+set}"
+```
+
+**If credentials are available:**
+1. `browser_snapshot()` to identify the login form fields
+2. Find and fill the email input field using `browser_click` on the field + `browser_type` with `WEWEB_EMAIL`
+3. Find and fill the password input field the same way
+4. Click the login/submit button
+5. `browser_wait_for("navigation")` — wait for redirect back to the editor
+6. `browser_snapshot()` to verify the editor has loaded
+
+**If credentials are NOT available (manual fallback):**
+
+Pause and inform the user:
+> "Veuillez vous connecter à WeWeb dans la fenêtre Playwright, puis dites-moi quand c'est fait."
+
+Wait for user confirmation, then `browser_snapshot()` to verify the editor is loaded before continuing.
 
 ### Step 4: Register Local Component
 1. Click "Dev" button in top nav bar
@@ -517,7 +592,7 @@ When reporting results, include a dedicated section for dummy data testing:
 - **Wrong editor URL**: `editor.weweb.io` won't have Dev panel — use `editor-dev.weweb.io`
 - **Drag-drop fails**: Sidebar panel intercepts standard events — must use manual `page.mouse` API
 - **Component not in Localhost**: Check that port matches and server shows "Successfully connected"
-- **Auth expired**: User must re-login manually in the Playwright browser
+- **Auth expired**: With `--user-data-dir` configured, sessions persist across runs. If expired, the skill auto-fills login if `WEWEB_EMAIL`/`WEWEB_PASSWORD` are set, otherwise prompts for manual login
 - **CSS not applying on root element**: WeWeb injects inline styles on root `<div>` — never style root, always target inner children (see Technical Details > Inline Style Override)
 - **Monaco editor click timeout**: Script property editors intercept pointer events — use `page.mouse.click` at computed coordinates (see Technical Details > Monaco Editor)
 - **Stale DOM after HMR**: After code changes, wait 2s minimum before measuring. Chart libraries may re-animate. Use `waitForTimeout(2000)` before evaluate/screenshot.
@@ -529,7 +604,7 @@ If the Playwright browser shows `about:blank` or the session is lost:
 1. Navigate to `https://localhost:PORT/` — SSL page
 2. Type `thisisunsafe` to bypass certificate
 3. Navigate to `https://editor-dev.weweb.io/PROJECT_ID`
-4. May need user to re-login (session expired)
+4. Check if login is needed (see Step 3a/3b) — with `--user-data-dir`, sessions usually persist
 5. **Re-configure all settings** — property values set via the settings panel are lost on session expiry. The component code still loads from dev server, but runtime property values need to be re-set.
 6. Verify dev server is still running: `curl -sk https://localhost:PORT/ -o /dev/null -w "%{http_code}"` (expect 200)
 

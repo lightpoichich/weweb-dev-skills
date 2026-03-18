@@ -40,7 +40,7 @@ Before publishing, verify:
 
 1. **`gh` CLI authenticated** — `gh auth status` should show logged in
 2. **`git` configured** — `git config user.name` and `git config user.email` set
-3. **Build passes** — `npm run build --name=COMPONENT_NAME` exits cleanly
+3. **Build passes** — `npx weweb build -- name=COMPONENT_NAME type=wwobject` exits cleanly
 4. **Clean working tree** — `git status` shows no uncommitted changes
 
 ## Pre-Publish Checklist
@@ -49,7 +49,7 @@ Run these 6 checks before ANY publish:
 
 ```bash
 # 1. Build passes
-npm run build --name=COMPONENT_NAME
+npx weweb build -- name=COMPONENT_NAME type=wwobject
 
 # 2. wwEditor blocks matched
 grep -c "wwEditor:start" src/wwElement.vue ww-config.js
@@ -331,7 +331,7 @@ The `weweb-orchestrator` may include a publish phase:
 
 | Mistake | Consequence | Fix |
 |---------|-------------|-----|
-| Push without building first | WeWeb build fails | Always run `npm run build` before push |
+| Push without building first | WeWeb build fails | Always run `npx weweb build -- name=... type=wwobject` before push |
 | Forget to bump version | WeWeb may cache old version | Always `npm version` before push |
 | Push to wrong branch | WeWeb tracks specific branch | Verify with `git branch --show-current` |
 | Edit package.json version manually | No git tag created | Use `npm version` which creates tag + commit |
